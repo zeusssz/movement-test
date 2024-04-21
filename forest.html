@@ -111,14 +111,11 @@
                 isSprinting = true;
             }
             if (event.key === 'Control') {
-                if (stamina > 0) {
-                    isSliding = true;
-                    stamina -= slideStaminaCost;
-                    updateStaminaBar();
+                if (!isControlPressed && Date.now() - lastControlPressTime > 3000) {
+                    isControlPressed = true;
+                    lastControlPressTime = Date.now();
+                    simulateKeyPress('w'); // Simulate pressing 'W' when control is pressed
                 }
-            }
-            if (event.key === 'e' || event.key === 'E') {
-                movePlayerForward();
             }
         });
         document.addEventListener('keyup', (event) => {
@@ -127,9 +124,15 @@
                 isSprinting = false;
             }
             if (event.key === 'Control') {
-                isSliding = false;
+                isControlPressed = false;
             }
         });
+
+        // Function to simulate a key press
+        function simulateKeyPress(key) {
+            const event = new KeyboardEvent('keydown', { key: key });
+            document.dispatchEvent(event);
+        }
 
         // Mouse movement
         const mouse = new THREE.Vector2();
@@ -182,57 +185,40 @@
 
         // Sprinting
         let isSprinting = false;
-        let isSliding = false;
+        let isControlPressed = false;
+        let lastControlPressTime = 0;
         let stamina = 100;
         const sprintSpeed = 0.2;
         const baseSpeed = 0.1;
-        const slideSpeed = 0.3; // Speed while sliding
-        const slideStaminaCost = 20; // Stamina cost for sliding
+        const controlSpeed = 0.8; 
         const staminaDecreaseRate = 20; // Decrease per second
         const staminaIncreaseRate = 10; // Increase per second
         const maxStamina = 100;
-
-        // Function to move the player forward according to camera position
-        function movePlayerForward() {
-            if (!isSliding) {
-                const direction = new THREE.Vector3();
-                direction.x -= Math.sin(camera.rotation.y);
-                direction.z -= Math.cos(camera.rotation.y);
-                direction.normalize().multiplyScalar(4); // Move forward by 4 units
-                player.position.add(direction);
-                player.prevPosition = player.position.clone();
-                detectCollisions();
-            }
-        }
 
         // Update player position and camera orientation
         function animate() {
             requestAnimationFrame(animate);
 
-            let speed = isSprinting ? sprintSpeed : baseSpeed;
-            if (isSliding) {
-                speed = slideSpeed;
-            }
-
+            const speed = isSprinting ? sprintSpeed : (isControlPressed ? controlSpeed : baseSpeed);
             const jumpSpeed = 0.2;
             const gravity = 0.4;
 
             const direction = new THREE.Vector3();
 
             if (isPointerLocked) {
-                if (!isSliding && keyboard['w']) {
+                if (keyboard['w']) {
                     direction.x -= Math.sin(camera.rotation.y);
                     direction.z -= Math.cos(camera.rotation.y);
                 }
-                if (!isSliding && keyboard['s']) { // Disable backward movement while sliding
+                if (keyboard['s']) {
                     direction.x += Math.sin(camera.rotation.y);
                     direction.z += Math.cos(camera.rotation.y);
                 }
-                if (!isSliding && keyboard['d']) { // Disable strafing while sliding
+                if (keyboard['d']) {
                     direction.x -= Math.sin(camera.rotation.y - Math.PI / 2);
                     direction.z -= Math.cos(camera.rotation.y - Math.PI / 2);
                 }
-                if (!isSliding && keyboard['a']) { // Disable strafing while sliding
+                if (keyboard['a']) {
                     direction.x += Math.sin(camera.rotation.y - Math.PI / 2);
                     direction.z += Math.cos(camera.rotation.y - Math.PI / 2);
                 }
@@ -244,7 +230,7 @@
                 detectCollisions();
 
                 if (keyboard[' ']) {
-                    if (player.position.z <= 0.5) {
+                    if (player.position.y <= 0.5) {
                         player.jumping = true;
                     }
                 }
@@ -259,7 +245,7 @@
                 }
 
                 // Update stamina
-                if (isSprinting && !isSliding) {
+                if (isSprinting) {
                     stamina -= staminaDecreaseRate / 60; // Divide by 60 to convert to per-frame decrease
                     if (stamina <= 0) {
                         stamina = 0;
