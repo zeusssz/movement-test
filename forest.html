@@ -19,11 +19,38 @@
             width: 100px;
             height: 20px;
             background-color: gray;
-            border: 1px solid black;
+            border: 1px solid rgb(255, 255, 255);
         }
         #stamina {
             height: 100%;
-            background-color: green;
+            background-color: rgb(0, 56, 119);
+        }
+        #healthBar {
+            position: absolute;
+            bottom: 10px;
+            left: 120px;
+            width: 100px;
+            height: 20px;
+            background-color: red;
+            border: 1px solid rgb(255, 255, 255);
+        }
+        #health {
+            height: 100%;
+            background-color: rgb(98, 255, 0);
+            
+        }
+        #fearBar {
+            position: absolute;
+            bottom: 10px;
+            right: 3px;
+            width: 100px;
+            height: 20px;
+            background-color: rgb(58, 58, 58);
+            border: 1px solid rgb(255, 255, 255);
+        }
+        #fear {
+            height: 100%;
+            background-color: rgb(141, 35, 190);
         }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -32,10 +59,16 @@
     <div id="staminaBar">
         <div id="stamina"></div>
     </div>
+    <div id="healthBar">
+        <div id="health"></div>
+    </div>
+    <div id="fearBar">
+        <div id="fear"></div>
+    </div>
     <script>
         // Scene setup
         const scene = new THREE.Scene();
-        scene.fog = new THREE.FogExp2(0x00000, 0.1); // Very thick exponential fog
+        scene.fog = new THREE.FogExp2(0x00000, 0.2); // Very thick exponential fog
 
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
         const renderer = new THREE.WebGLRenderer();
@@ -48,6 +81,20 @@
         const player = new THREE.Mesh(playerGeometry, playerMaterial);
         player.position.y = 0.5; // Adjust player's initial position
         scene.add(player);
+
+        // Flashlight setup
+        const flashlight = new THREE.SpotLight(0xffffff, 1);
+        flashlight.position.set(0, 1, 0); // Position relative to the player
+        flashlight.target.position.set(0, 0, -1); // Pointing forward from the player
+        flashlight.angle = Math.PI / 6; // Narrow angle to simulate a focused beam
+        flashlight.penumbra = 0.5; // Soft edges of the spotlight
+        flashlight.castShadow = true; // Enable shadow casting
+        flashlight.shadow.mapSize.width = 1024;
+        flashlight.shadow.mapSize.height = 1024;
+        flashlight.shadow.camera.near = 0.1;
+        flashlight.shadow.camera.far = 25;
+        scene.add(flashlight);
+        scene.add(flashlight.target);
 
         // Environment setup
         const environmentGeometry = new THREE.BoxGeometry(100, 0.1, 100);
@@ -78,7 +125,7 @@
         const foliageTexture = new THREE.TextureLoader().load('https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTSmLw5r1AtO8xhvHTQwR4BpcCdHIYcDOkXpBMpiQJrog&s');
 
         // Create trees
-        const numTrees = 30; // Number of trees to generate
+        const numTrees = 420; // Number of trees to generate
 
         for (let i = 0; i < numTrees; i++) {
             // Trunk
@@ -110,12 +157,8 @@
             if (event.key === 'Shift') {
                 isSprinting = true;
             }
-            if (event.key === 'Control') {
-                if (!isControlPressed && Date.now() - lastControlPressTime > 3000) {
-                    isControlPressed = true;
-                    lastControlPressTime = Date.now();
-                    simulateKeyPress('w'); // Simulate pressing 'W' when control is pressed
-                }
+            if (event.key === 'f') {
+                flashlight.visible = !flashlight.visible; // Toggle flashlight visibility on 'f' key press
             }
         });
         document.addEventListener('keyup', (event) => {
@@ -123,16 +166,7 @@
             if (event.key === 'Shift') {
                 isSprinting = false;
             }
-            if (event.key === 'Control') {
-                isControlPressed = false;
-            }
         });
-
-        // Function to simulate a key press
-        function simulateKeyPress(key) {
-            const event = new KeyboardEvent('keydown', { key: key });
-            document.dispatchEvent(event);
-        }
 
         // Mouse movement
         const mouse = new THREE.Vector2();
@@ -167,41 +201,24 @@
             }
         });
 
-        // Collision detection
-        function detectCollisions() {
-            const playerPos = player.position;
-            const envPos = environment.position;
-            const envSize = environment.geometry.parameters;
-
-            if (
-                playerPos.x < envPos.x - envSize.width / 2 ||
-                playerPos.x > envPos.x + envSize.width / 2 ||
-                playerPos.z < envPos.z - envSize.depth / 2 ||
-                playerPos.z > envPos.z + envSize.depth / 2
-            ) {
-                player.position.copy(player.prevPosition);
-            }
-        }
-
-        // Sprinting
+        // Health and stamina
         let isSprinting = false;
-        let isControlPressed = false;
-        let lastControlPressTime = 0;
         let stamina = 100;
-        const sprintSpeed = 0.2;
-        const baseSpeed = 0.1;
-        const controlSpeed = 0.8; 
-        const staminaDecreaseRate = 20; // Decrease per second
-        const staminaIncreaseRate = 10; // Increase per second
+        let health = 100;
+        const sprintSpeed = 0.1;
+        const baseSpeed = 0.03;
+        const staminaDecreaseRate = 50; // Decrease per second
+        const staminaIncreaseRate = 5; // Increase per second
         const maxStamina = 100;
+        const healthRegenRate = 1; // Health regeneration per 5 seconds
 
         // Update player position and camera orientation
         function animate() {
             requestAnimationFrame(animate);
 
-            const speed = isSprinting ? sprintSpeed : (isControlPressed ? controlSpeed : baseSpeed);
-            const jumpSpeed = 0.2;
-            const gravity = 0.4;
+            const speed = isSprinting ? sprintSpeed : baseSpeed;
+            const jumpSpeed = 1; // depreciated
+            const gravity = 0.2;
 
             const direction = new THREE.Vector3();
 
@@ -229,27 +246,15 @@
 
                 detectCollisions();
 
-                if (keyboard[' ']) {
-                    if (player.position.y <= 0.5) {
-                        player.jumping = true;
-                    }
-                }
-
-                if (player.jumping) {
-                    player.position.y += jumpSpeed;
-                    if (player.position.y >= 2) {
-                        player.jumping = false;
-                    }
-                } else if (player.position.y > 0) {
-                    player.position.y -= gravity;
-                }
-
                 // Update stamina
                 if (isSprinting) {
                     stamina -= staminaDecreaseRate / 60; // Divide by 60 to convert to per-frame decrease
                     if (stamina <= 0) {
                         stamina = 0;
                         isSprinting = false;
+                        if (health > 0) {
+                            health -= 10; // Reduce health if stamina is depleted
+                        }
                     }
                 } else {
                     if (stamina < maxStamina) {
@@ -259,8 +264,26 @@
                         stamina = maxStamina;
                     }
                 }
+
+                // Update health
+                if (health <= 0) {
+                    endGame();
+                } else if (health < 100) {
+                    health += healthRegenRate / 60; // Divide by 60 to convert to per-frame increase
+                    if (health > 100) {
+                        health = 100;
+                    }
+                    updateHealthBar();
+                }
+
                 updateStaminaBar();
             }
+
+            // Update flashlight position and direction
+            flashlight.position.copy(player.position);
+            flashlight.position.y += 0.75; // Adjust height of the flashlight
+            flashlight.target.position.copy(player.position);
+            flashlight.target.position.add(camera.getWorldDirection(new THREE.Vector3()));
 
             camera.position.copy(player.position);
             camera.position.y += 1;
@@ -271,6 +294,49 @@
         function updateStaminaBar() {
             const staminaBar = document.getElementById('stamina');
             staminaBar.style.width = stamina + '%';
+        }
+
+        function updateHealthBar() {
+            const healthBar = document.getElementById('health');
+            healthBar.style.width = health + '%';
+        }
+
+        let fear = 0;
+        const maxFear = 100;
+
+        function updateFearBar() {
+            const fearBar = document.getElementById('fear');
+            fearBar.style.width = fear + '%';
+        }
+
+        function takeDamage() {
+            fear += 1;
+            if (fear > maxFear) {
+                fear = maxFear;
+            }
+            updateFearBar();
+        }
+
+        function detectCollisions() {
+            const playerPos = player.position;
+            const envPos = environment.position;
+            const envSize = environment.geometry.parameters;
+
+            if (
+                playerPos.x < envPos.x - envSize.width / 2 ||
+                playerPos.x > envPos.x + envSize.width / 2 ||
+                playerPos.z < envPos.z - envSize.depth / 2 ||
+                playerPos.z > envPos.z + envSize.depth / 2
+            ) {
+                player.position.copy(player.prevPosition);
+            }
+        }
+
+        function endGame() {
+            // Display modal for game over
+            alert("Game Over!");
+            // Reload the page to start again
+            location.reload();
         }
 
         function resizeRendererToDisplaySize() {
