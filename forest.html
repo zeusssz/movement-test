@@ -124,31 +124,75 @@
         const trunkTexture = new THREE.TextureLoader().load('https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQONIy6utWh10QE0OhE33D7kslxNFYERhDTmdiumwgAnQ&s');
         const foliageTexture = new THREE.TextureLoader().load('https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTSmLw5r1AtO8xhvHTQwR4BpcCdHIYcDOkXpBMpiQJrog&s');
 
-        // Create trees
-        const numTrees = 420; // Number of trees to generate
+        // Create random trees
+const numRandomTrees = 420; // Number of random trees to generate
+const minRandomTreeX = -40; // Minimum x-coordinate for random trees
+const maxRandomTreeX = 40; // Maximum x-coordinate for random trees
+const minRandomTreeZ = -40; // Minimum z-coordinate for random trees
+const maxRandomTreeZ = 40; // Maximum z-coordinate for random trees
 
-        for (let i = 0; i < numTrees; i++) {
-            // Trunk
-            const trunkGeometry = new THREE.CylinderGeometry(0.1, 0.2, 2, 8);
-            const trunkMaterial = new THREE.MeshBasicMaterial({ map: trunkTexture });
-            const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
+for (let i = 0; i < numRandomTrees; i++) {
+    const x = randomInRange(minRandomTreeX, maxRandomTreeX);
+    const z = randomInRange(minRandomTreeZ, maxRandomTreeZ);
+    createTree(x, z);
+}
 
-            // Foliage
-            const foliageGeometry = new THREE.ConeGeometry(1, 2, 8);
-            const foliageMaterial = new THREE.MeshBasicMaterial({ map: foliageTexture });
-            const foliage1 = new THREE.Mesh(foliageGeometry, foliageMaterial);
-            const foliage2 = new THREE.Mesh(foliageGeometry, foliageMaterial);
+// Create trees along the boundary of the map
+const wallTreeSpacing = 1; // Adjust this value to control the density of the tree wall
 
-            // Random position within a defined area
-            const x = randomInRange(-50, 50);
-            const z = randomInRange(-50, 50);
+for (let i = -50; i <= 50; i += wallTreeSpacing) {
+    createTree(-50, i);
+    createTree(50, i);
+    createTree(i, -50);
+    createTree(i, 50);
+}
 
-            trunk.position.set(x, 0.5, z);
-            foliage1.position.set(x, 2, z);
-            foliage2.position.set(x, 3, z);
+function createTree(x, z) {
+    // Trunk
+    const trunkGeometry = new THREE.CylinderGeometry(0.1, 0.2, 2, 8);
+    const trunkMaterial = new THREE.MeshBasicMaterial({ map: trunkTexture });
+    const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
 
-            scene.add(trunk, foliage1, foliage2);
-        }
+    // Foliage
+    const foliageGeometry = new THREE.ConeGeometry(1, 2, 8);
+    const foliageMaterial = new THREE.MeshBasicMaterial({ map: foliageTexture });
+    const foliage1 = new THREE.Mesh(foliageGeometry, foliageMaterial);
+    const foliage2 = new THREE.Mesh(foliageGeometry, foliageMaterial);
+
+    trunk.position.set(x, 0.5, z);
+    foliage1.position.set(x, 2, z);
+    foliage2.position.set(x, 3, z);
+
+    // Add slight offsets to the positions of foliage
+    foliage1.position.x += Math.random() * 0.2 - 0.1;
+    foliage1.position.z += Math.random() * 0.2 - 0.1;
+    foliage2.position.x += Math.random() * 0.2 - 0.1;
+    foliage2.position.z += Math.random() * 0.2 - 0.1;
+
+    scene.add(trunk, foliage1, foliage2);
+}
+
+function detectCollisions() {
+    const playerPos = player.position;
+
+    // Calculate boundaries considering tree positions
+    const minX = -50 + 0.5; // Adjust for tree width
+    const maxX = 50 - 0.5; // Adjust for tree width
+    const minZ = -50 + 0.5; // Adjust for tree width
+    const maxZ = 50 - 0.5; // Adjust for tree width
+
+    // Check if the player is within the boundaries
+    if (
+        playerPos.x < minX ||
+        playerPos.x > maxX ||
+        playerPos.z < minZ ||
+        playerPos.z > maxZ
+    ) {
+        // If the player is outside the boundaries, revert its position
+        player.position.copy(player.prevPosition);
+    }
+}
+
 
         // Keyboard input
         const keyboard = {};
