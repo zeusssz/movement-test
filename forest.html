@@ -192,6 +192,22 @@ function detectCollisions() {
         player.position.copy(player.prevPosition);
     }
 }
+        // Add house
+const houseGeometry = new THREE.BoxGeometry(4, 4, 4);
+const roofGeometry = new THREE.CylinderGeometry(0, 2.8, 2, 4);
+const houseMaterial = new THREE.MeshBasicMaterial({ color: 0x8B4513 });
+const roofMaterial = new THREE.MeshBasicMaterial({ color: 0xA52A2A });
+
+const house = new THREE.Mesh(houseGeometry, houseMaterial);
+const roof = new THREE.Mesh(roofGeometry, roofMaterial);
+
+house.position.set(randomInRange(-30, 30), 2, randomInRange(-30, 30));
+roof.position.set(house.position.x, house.position.y + 2.5, house.position.z);
+roof.rotation.y = Math.PI / 4; // Rotate the roof to align with the house
+
+scene.add(house);
+scene.add(roof);
+
 
 
         // Keyboard input
