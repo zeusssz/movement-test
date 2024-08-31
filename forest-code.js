@@ -25,6 +25,17 @@ flashlight.shadow.camera.far = 25;
 scene.add(flashlight);
 scene.add(flashlight.target);
 
+function resizeRendererToDisplaySize() {
+    const canvas = renderer.domElement;
+    const width = window.innerWidth;
+    const height = window.innerHeight;
+    renderer.setSize(width, height, false);
+    camera.aspect = width / height;
+    camera.updateProjectionMatrix();
+}
+
+window.addEventListener('resize', resizeRendererToDisplaySize);
+
 const environment = new THREE.Mesh(
     new THREE.BoxGeometry(100, 0.1, 100),
     new THREE.MeshBasicMaterial({ color: 0x555555 })
