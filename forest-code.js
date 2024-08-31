@@ -29,10 +29,9 @@ const environment = new THREE.Mesh(
     new THREE.BoxGeometry(100, 0.1, 100),
     new THREE.MeshBasicMaterial({ color: 0x555555 })
 );
-scene.add(environment);
-
 const textureLoader = new THREE.TextureLoader();
 environment.material.map = textureLoader.load('https://t4.ftcdn.net/jpg/00/74/04/43/360_F_74044371_fHXDQ9UrOTRkZffoef1QXtuYX7suMNXr.jpg');
+scene.add(environment);
 
 scene.add(new THREE.AmbientLight(0xffffff, 0.5));
 const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
@@ -81,7 +80,7 @@ function createTree(x, z) {
         new THREE.MeshBasicMaterial({ map: foliageTexture })
     );
 
-    trunk.position.set(x, 0.5, z);
+    trunk.position.set(x, 1, z);
     foliage1.position.set(x, 2, z);
     foliage2.position.set(x, 3, z);
 
@@ -100,12 +99,7 @@ function detectCollisions() {
     const minZ = -50 + 0.5;
     const maxZ = 50 - 0.5;
 
-    if (
-        playerPos.x < minX ||
-        playerPos.x > maxX ||
-        playerPos.z < minZ ||
-        playerPos.z > maxZ
-    ) {
+    if (playerPos.x < minX || playerPos.x > maxX || playerPos.z < minZ || playerPos.z > maxZ) {
         player.position.copy(player.prevPosition);
     }
 }
