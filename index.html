@@ -55,6 +55,15 @@
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script>
+function resizeRendererToDisplaySize() {
+    const canvas = renderer.domElement;
+    const width = window.innerWidth;
+    const height = window.innerHeight;
+    renderer.setSize(width, height, false);
+    camera.aspect = width / height;
+    camera.updateProjectionMatrix();
+}
+        
 function updateStaminaBar(stamina) {
     const staminaBar = document.getElementById('stamina-bar');
     if (staminaBar) {
