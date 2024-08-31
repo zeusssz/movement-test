@@ -1,6 +1,15 @@
 const scene = new THREE.Scene();
 scene.fog = new THREE.FogExp2(0x000000, 0.2);
 
+function resizeRendererToDisplaySize() {
+    const canvas = renderer.domElement;
+    const width = window.innerWidth;
+    const height = window.innerHeight;
+    renderer.setSize(width, height, false);
+    camera.aspect = width / height;
+    camera.updateProjectionMatrix();
+}
+
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 const renderer = new THREE.WebGLRenderer();
 resizeRendererToDisplaySize();
@@ -24,15 +33,6 @@ flashlight.shadow.camera.near = 0.1;
 flashlight.shadow.camera.far = 25;
 scene.add(flashlight);
 scene.add(flashlight.target);
-
-function resizeRendererToDisplaySize() {
-    const canvas = renderer.domElement;
-    const width = window.innerWidth;
-    const height = window.innerHeight;
-    renderer.setSize(width, height, false);
-    camera.aspect = width / height;
-    camera.updateProjectionMatrix();
-}
 
 window.addEventListener('resize', resizeRendererToDisplaySize);
 
