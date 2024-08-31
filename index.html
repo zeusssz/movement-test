@@ -54,6 +54,62 @@
         }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+function updateStaminaBar(stamina) {
+    const staminaBar = document.getElementById('stamina-bar');
+    if (staminaBar) {
+        staminaBar.style.width = `${stamina}%`;
+    } else {
+        console.error('Stamina bar element not found.');
+    }
+}
+
+function updateHealthBar(health) {
+    const healthBar = document.getElementById('health-bar');
+    if (healthBar) {
+        healthBar.style.width = `${health}%`;
+    } else {
+        console.error('Health bar element not found.');
+    }
+}
+
+const keyboard = {};
+document.addEventListener('keydown', (event) => {
+    keyboard[event.key] = true;
+    if (event.key === 'Shift') isSprinting = true;
+    if (event.key === 'f') flashlight.visible = !flashlight.visible;
+});
+document.addEventListener('keyup', (event) => {
+    keyboard[event.key] = false;
+    if (event.key === 'Shift') isSprinting = false;
+});
+
+const mouse = new THREE.Vector2();
+const sensitivity = 0.01;
+let isPointerLocked = false;
+
+function handleMouseMove(event) {
+    if (isPointerLocked) {
+        mouse.x += event.movementX * sensitivity;
+        mouse.y += event.movementY * sensitivity;
+        camera.rotation.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, camera.rotation.x + event.movementY * sensitivity));
+        camera.rotation.y -= event.movementX * sensitivity;
+    }
+}
+
+document.addEventListener('mousemove', handleMouseMove);
+
+const canvas = renderer.domElement;
+
+canvas.addEventListener('click', () => canvas.requestPointerLock());
+
+document.addEventListener('pointerlockchange', () => {
+    isPointerLocked = document.pointerLockElement === canvas;
+    if (isPointerLocked) {
+        mouse.set(0, 0);
+    }
+});
+    </script>
 </head>
 <body>
     <div id="staminaBar">
