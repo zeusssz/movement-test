@@ -66,5 +66,16 @@
         <div id="sanity"></div>
     </div>
     <script src='forest-code.js'></script>
+    <script>
+function resizeRendererToDisplaySize() {
+    const canvas = renderer.domElement;
+    const width = window.innerWidth;
+    const height = window.innerHeight;
+    renderer.setSize(width, height, false);
+    camera.aspect = width / height;
+    camera.updateProjectionMatrix();
+}
+
+window.addEventListener('resize', resizeRendererToDisplaySize);</script>
 </body>
 </html>
