@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>The Forest</title>
+    <title>Movement Test</title>
     <style>
         body {
             overflow: hidden;
@@ -54,71 +54,6 @@
         }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script>
-function resizeRendererToDisplaySize() {
-    const canvas = renderer.domElement;
-    const width = window.innerWidth;
-    const height = window.innerHeight;
-    renderer.setSize(width, height, false);
-    camera.aspect = width / height;
-    camera.updateProjectionMatrix();
-}
-        
-function updateStaminaBar(stamina) {
-    const staminaBar = document.getElementById('stamina-bar');
-    if (staminaBar) {
-        staminaBar.style.width = `${stamina}%`;
-    } else {
-        console.error('Stamina bar element not found.');
-    }
-}
-
-function updateHealthBar(health) {
-    const healthBar = document.getElementById('health-bar');
-    if (healthBar) {
-        healthBar.style.width = `${health}%`;
-    } else {
-        console.error('Health bar element not found.');
-    }
-}
-
-const keyboard = {};
-document.addEventListener('keydown', (event) => {
-    keyboard[event.key] = true;
-    if (event.key === 'Shift') isSprinting = true;
-    if (event.key === 'f') flashlight.visible = !flashlight.visible;
-});
-document.addEventListener('keyup', (event) => {
-    keyboard[event.key] = false;
-    if (event.key === 'Shift') isSprinting = false;
-});
-
-const mouse = new THREE.Vector2();
-const sensitivity = 0.01;
-let isPointerLocked = false;
-
-function handleMouseMove(event) {
-    if (isPointerLocked) {
-        mouse.x += event.movementX * sensitivity;
-        mouse.y += event.movementY * sensitivity;
-        camera.rotation.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, camera.rotation.x + event.movementY * sensitivity));
-        camera.rotation.y -= event.movementX * sensitivity;
-    }
-}
-
-document.addEventListener('mousemove', handleMouseMove);
-
-const canvas = renderer.domElement;
-
-canvas.addEventListener('click', () => canvas.requestPointerLock());
-
-document.addEventListener('pointerlockchange', () => {
-    isPointerLocked = document.pointerLockElement === canvas;
-    if (isPointerLocked) {
-        mouse.set(0, 0);
-    }
-});
-    </script>
 </head>
 <body>
     <div id="staminaBar">
@@ -130,6 +65,357 @@ document.addEventListener('pointerlockchange', () => {
     <div id="sanityBar">
         <div id="sanity"></div>
     </div>
-    <script src='forest-code.js'></script>
+    <script>
+        // Scene setup
+        const scene = new THREE.Scene();
+        scene.fog = new THREE.FogExp2(0x00000, 0.2); // Very thick exponential fog
+
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer();
+        resizeRendererToDisplaySize();
+        document.body.appendChild(renderer.domElement);
+
+        // Player setup
+        const playerGeometry = new THREE.BoxGeometry(1, 1, 1);
+        const playerMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00, transparent: true, opacity: 0 }); // Transparent material
+        const player = new THREE.Mesh(playerGeometry, playerMaterial);
+        player.position.y = 0.5; // Adjust player's initial position
+        scene.add(player);
+
+        // Flashlight setup
+        const flashlight = new THREE.SpotLight(0xffffff, 1);
+        flashlight.position.set(0, 1, 0); // Position relative to the player
+        flashlight.target.position.set(0, 0, -1); // Pointing forward from the player
+        flashlight.angle = Math.PI / 6; // Narrow angle to simulate a focused beam
+        flashlight.penumbra = 0.5; // Soft edges of the spotlight
+        flashlight.castShadow = true; // Enable shadow casting
+        flashlight.shadow.mapSize.width = 1024;
+        flashlight.shadow.mapSize.height = 1024;
+        flashlight.shadow.camera.near = 0.1;
+        flashlight.shadow.camera.far = 25;
+        scene.add(flashlight);
+        scene.add(flashlight.target);
+
+        // Environment setup
+        const environmentGeometry = new THREE.BoxGeometry(100, 0.1, 100);
+        const environmentMaterial = new THREE.MeshBasicMaterial({ color: 0x555555 });
+        const environment = new THREE.Mesh(environmentGeometry, environmentMaterial);
+        scene.add(environment);
+
+        // Add textures to the environment
+        const textureLoader = new THREE.TextureLoader();
+        const groundTexture = textureLoader.load('https://t4.ftcdn.net/jpg/00/74/04/43/360_F_74044371_fHXDQ9UrOTRkZffoef1QXtuYX7suMNXr.jpg');
+        environmentMaterial.map = groundTexture;
+
+        // Add lighting
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+        scene.add(ambientLight);
+
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
+        directionalLight.position.set(1, 1, 0);
+        scene.add(directionalLight);
+
+        // Function to generate a random number within a range
+        function randomInRange(min, max) {
+            return Math.random() * (max - min) + min;
+        }
+
+        // Load textures
+        const trunkTexture = new THREE.TextureLoader().load('https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQONIy6utWh10QE0OhE33D7kslxNFYERhDTmdiumwgAnQ&s');
+        const foliageTexture = new THREE.TextureLoader().load('https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTSmLw5r1AtO8xhvHTQwR4BpcCdHIYcDOkXpBMpiQJrog&s');
+
+        // Create random trees
+const numRandomTrees = 420; // Number of random trees to generate
+const minRandomTreeX = -40; // Minimum x-coordinate for random trees
+const maxRandomTreeX = 40; // Maximum x-coordinate for random trees
+const minRandomTreeZ = -40; // Minimum z-coordinate for random trees
+const maxRandomTreeZ = 40; // Maximum z-coordinate for random trees
+
+for (let i = 0; i < numRandomTrees; i++) {
+    const x = randomInRange(minRandomTreeX, maxRandomTreeX);
+    const z = randomInRange(minRandomTreeZ, maxRandomTreeZ);
+    createTree(x, z);
+}
+
+// Create trees along the boundary of the map
+const wallTreeSpacing = 1; // Adjust this value to control the density of the tree wall
+
+for (let i = -50; i <= 50; i += wallTreeSpacing) {
+    createTree(-50, i);
+    createTree(50, i);
+    createTree(i, -50);
+    createTree(i, 50);
+}
+
+function createTree(x, z) {
+    // Trunk
+    const trunkGeometry = new THREE.CylinderGeometry(0.1, 0.2, 2, 8);
+    const trunkMaterial = new THREE.MeshBasicMaterial({ map: trunkTexture });
+    const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
+
+    // Foliage
+    const foliageGeometry = new THREE.ConeGeometry(1, 2, 8);
+    const foliageMaterial = new THREE.MeshBasicMaterial({ map: foliageTexture });
+    const foliage1 = new THREE.Mesh(foliageGeometry, foliageMaterial);
+    const foliage2 = new THREE.Mesh(foliageGeometry, foliageMaterial);
+
+    trunk.position.set(x, 0.5, z);
+    foliage1.position.set(x, 2, z);
+    foliage2.position.set(x, 3, z);
+
+    // Add slight offsets to the positions of foliage
+    foliage1.position.x += Math.random() * 0.2 - 0.1;
+    foliage1.position.z += Math.random() * 0.2 - 0.1;
+    foliage2.position.x += Math.random() * 0.2 - 0.1;
+    foliage2.position.z += Math.random() * 0.2 - 0.1;
+
+    scene.add(trunk, foliage1, foliage2);
+}
+
+function detectCollisions() {
+    const playerPos = player.position;
+
+    // Calculate boundaries considering tree positions
+    const minX = -50 + 0.5; // Adjust for tree width
+    const maxX = 50 - 0.5; // Adjust for tree width
+    const minZ = -50 + 0.5; // Adjust for tree width
+    const maxZ = 50 - 0.5; // Adjust for tree width
+
+    // Check if the player is within the boundaries
+    if (
+        playerPos.x < minX ||
+        playerPos.x > maxX ||
+        playerPos.z < minZ ||
+        playerPos.z > maxZ
+    ) {
+        // If the player is outside the boundaries, revert its position
+        player.position.copy(player.prevPosition);
+    }
+}
+        // Add house
+const houseGeometry = new THREE.BoxGeometry(4, 4, 4);
+const roofGeometry = new THREE.CylinderGeometry(0, 2.8, 2, 4);
+const houseMaterial = new THREE.MeshBasicMaterial({ color: 0x8B4513 });
+const roofMaterial = new THREE.MeshBasicMaterial({ color: 0xA52A2A });
+
+const house = new THREE.Mesh(houseGeometry, houseMaterial);
+const roof = new THREE.Mesh(roofGeometry, roofMaterial);
+
+house.position.set(randomInRange(-30, 30), 2, randomInRange(-30, 30));
+roof.position.set(house.position.x, house.position.y + 2.5, house.position.z);
+roof.rotation.y = Math.PI / 4; // Rotate the roof to align with the house
+
+scene.add(house);
+scene.add(roof);
+
+
+
+        // Keyboard input
+        const keyboard = {};
+        document.addEventListener('keydown', (event) => {
+            keyboard[event.key] = true;
+            if (event.key === 'Shift') {
+                isSprinting = true;
+            }
+            if (event.key === 'f') {
+                flashlight.visible = !flashlight.visible; // Toggle flashlight visibility on 'f' key press
+            }
+        });
+        document.addEventListener('keyup', (event) => {
+            keyboard[event.key] = false;
+            if (event.key === 'Shift') {
+                isSprinting = false;
+            }
+        });
+
+        // Mouse movement
+        const mouse = new THREE.Vector2();
+        const sensitivity = 0.01;
+        let isPointerLocked = false;
+
+        function handleMouseMove(event) {
+            if (isPointerLocked) {
+                mouse.x += event.movementX * sensitivity;
+                mouse.y += event.movementY * sensitivity;
+                // Limit vertical rotation between -π/2 to π/2
+                camera.rotation.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, camera.rotation.x + event.movementY * sensitivity));
+                // Horizontal rotation
+                camera.rotation.y -= event.movementX * sensitivity;
+            }
+        }
+
+        document.addEventListener('mousemove', handleMouseMove);
+
+        // Lock cursor to center
+        const canvas = renderer.domElement;
+
+        canvas.addEventListener('click', () => {
+            canvas.requestPointerLock();
+        });
+
+        document.addEventListener('pointerlockchange', () => {
+            isPointerLocked = document.pointerLockElement === canvas;
+            if (isPointerLocked) {
+                mouse.x = 0;
+                mouse.y = 0;
+            }
+        });
+
+        // Health and stamina
+        let isSprinting = false;
+        let stamina = 100;
+        let health = 100;
+        const sprintSpeed = 0.1;
+        const baseSpeed = 0.03;
+        const staminaDecreaseRate = 50; // Decrease per second
+        const staminaIncreaseRate = 5; // Increase per second
+        const maxStamina = 100;
+        const healthRegenRate = 1; // Health regeneration per 5 seconds
+
+        // Update player position and camera orientation
+        function animate() {
+            requestAnimationFrame(animate);
+
+            const speed = isSprinting ? sprintSpeed : baseSpeed;
+            const jumpSpeed = 1; // depreciated
+            const gravity = 0.2;
+
+            const direction = new THREE.Vector3();
+
+            if (isPointerLocked) {
+                if (keyboard['w']) {
+                    direction.x -= Math.sin(camera.rotation.y);
+                    direction.z -= Math.cos(camera.rotation.y);
+                }
+                if (keyboard['s']) {
+                    direction.x += Math.sin(camera.rotation.y);
+                    direction.z += Math.cos(camera.rotation.y);
+                }
+                if (keyboard['d']) {
+                    direction.x -= Math.sin(camera.rotation.y - Math.PI / 2);
+                    direction.z -= Math.cos(camera.rotation.y - Math.PI / 2);
+                }
+                if (keyboard['a']) {
+                    direction.x += Math.sin(camera.rotation.y - Math.PI / 2);
+                    direction.z += Math.cos(camera.rotation.y - Math.PI / 2);
+                }
+
+                direction.normalize().multiplyScalar(speed);
+                player.position.add(direction);
+                player.prevPosition = player.position.clone();
+
+                detectCollisions();
+
+                // Update stamina
+                if (isSprinting) {
+                    stamina -= staminaDecreaseRate / 60; // Divide by 60 to convert to per-frame decrease
+                    if (stamina <= 0) {
+                        stamina = 0;
+                        isSprinting = false;
+                        if (health > 0) {
+                            health -= 10; // Reduce health if stamina is depleted
+                            takeDamage(); // Call takeDamage() when health decreases
+                        }
+                    }
+                } else {
+                    if (stamina < maxStamina) {
+                        stamina += staminaIncreaseRate / 60; // Divide by 60 to convert to per-frame increase
+                    }
+                    if (stamina > maxStamina) {
+                        stamina = maxStamina;
+                    }
+                }
+
+                // Update health
+                if (health <= 0) {
+                    endGame();
+                } else if (health < 100) {
+                    health += healthRegenRate / 60; // Divide by 60 to convert to per-frame increase
+                    if (health > 100) {
+                        health = 100;
+                    }
+                    updateHealthBar();
+                }
+
+                updateStaminaBar();
+            }
+
+            // Update flashlight position and direction
+            flashlight.position.copy(player.position);
+            flashlight.position.y += 0.75; // Adjust height of the flashlight
+            flashlight.target.position.copy(player.position);
+            flashlight.target.position.add(camera.getWorldDirection(new THREE.Vector3()));
+
+            camera.position.copy(player.position);
+            camera.position.y += 1;
+
+            renderer.render(scene, camera);
+        }
+
+        function updateStaminaBar() {
+            const staminaBar = document.getElementById('stamina');
+            staminaBar.style.width = stamina + '%';
+        }
+
+        function updateHealthBar() {
+            const healthBar = document.getElementById('health');
+            healthBar.style.width = health + '%';
+        }
+
+        let sanity = 100;
+        const maxSanity = 100;
+
+        function updateSanityBar() {
+            const sanityBar = document.getElementById('sanity');
+            sanityBar.style.width = sanity + '%';
+        }
+
+        function takeDamage() {
+            sanity -= 1;
+            if (sanity > maxSanity) {
+                sanity = maxSanity;
+            }
+            updateSanityBar();
+        }
+
+        function detectCollisions() {
+            const playerPos = player.position;
+            const envPos = environment.position;
+            const envSize = environment.geometry.parameters;
+
+            if (
+                playerPos.x < envPos.x - envSize.width / 2 ||
+                playerPos.x > envPos.x + envSize.width / 2 ||
+                playerPos.z < envPos.z - envSize.depth / 2 ||
+                playerPos.z > envPos.z + envSize.depth / 2
+            ) {
+                player.position.copy(player.prevPosition);
+            }
+        }
+
+        function endGame() {
+            // Display modal for game over
+            alert("Game Over!");
+            // Reload the page to start again
+            location.reload();
+        }
+
+        function resizeRendererToDisplaySize() {
+            const canvas = renderer.domElement;
+            const width = window.innerWidth;
+            const height = window.innerHeight;
+            const needResize = canvas.width !== width || canvas.height !== height;
+            if (needResize) {
+                renderer.setSize(width, height, false);
+                camera.aspect = width / height;
+                camera.updateProjectionMatrix();
+            }
+            return needResize;
+        }
+
+        window.addEventListener('resize', resizeRendererToDisplaySize);
+
+        animate();
+    </script>
 </body>
 </html>
