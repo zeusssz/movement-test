@@ -1,3 +1,4 @@
+document.addEventListener('DOMContentLoaded', () => {
 const scene = new THREE.Scene();
 scene.fog = new THREE.FogExp2(0x000000, 0.2);
 
@@ -257,3 +258,4 @@ function endGame() {
 }
 
 animate();
+});
